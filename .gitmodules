@@ -1,0 +1,3 @@
+[submodule "kemlglearn"]
+	path = kemlglearn
+	url = ssh://git@github.com/mbirkholzupc/kemlglearn
