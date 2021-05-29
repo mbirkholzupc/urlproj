@@ -18,6 +18,10 @@
 :Created on:
 
 """
+import sys
+
+sys.path.insert(1, '../kemlglearn')
+
 import argparse
 import csv
 import math
@@ -30,7 +34,7 @@ from sklearn.datasets import make_blobs, make_moons
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import MinMaxScaler
 
-from DBSCAN import DBSCAN
+from kemlglearn.cluster.DBSCAN import DBSCAN
 
 # Random-number generator
 the_rng = np.random.default_rng()
@@ -78,51 +82,61 @@ if __name__ == '__main__':
     if args['seed']:
         the_rng=np.random.default_rng(int(args['seed']))
 
-    # Read in data file
-    df = pd.read_csv(args['filename'], header=None, delimiter=' ')
+    # Read in data files
+    # They are subject10[1-9].dat, so let's modify the last 5 characters to read in all of these
+    basefn=args['filename'][:-5]
+    df=pd.DataFrame()
+    for i in range(1,10):
+        tmpfn=basefn+str(i)+'.dat'
+        tmpdf = pd.read_csv(tmpfn, header=None, delimiter=' ')
 
-    # Replace NaN measurements due to slow sensor update rate with last good value
-    tmplist=[]
-    last_val = float('nan')
-    ctr=0
-    for val in df[2]:
-        if not math.isnan(val):
-            last_val = val
-        tmplist.append(last_val)
-    df=df.drop(2,axis=1)
-    df.insert(2,'2',tmplist)
+        # Replace NaN measurements due to slow sensor update rate with last good value
+        tmplist=[]
+        last_val = float('nan')
+        ctr=0
+        for val in tmpdf[2]:
+            if not math.isnan(val):
+                last_val = val
+            tmplist.append(last_val)
+        tmpdf=tmpdf.drop(2,axis=1)
+        tmpdf.insert(2,'2',tmplist)
 
-    # Drop timestamp and activity identifier
-    df=df.drop(0,axis=1)
-    df=df.drop(1,axis=1)
+        # Drop timestamp and activity identifier
+        tmpdf=tmpdf.drop(0,axis=1)
+        tmpdf=tmpdf.drop(1,axis=1)
 
-    # Drop any rows still containing NaN measurements (due to dropped wireless packets, and possibly first
-    # couple of rows before the first heartrate update)
-    before_rows=df.shape[0]
-    df=df.apply(pd.to_numeric, errors='coerce')
-    df=df.dropna()
-    df=df.reset_index(drop=True)
-    after_rows=df.shape[0]
-    percent_dropped=100*(before_rows-after_rows)/before_rows
-    print(f'Dropped {percent_dropped:1.2f}% of data')
-    print(df)
+        # Drop any rows still containing NaN measurements (due to dropped wireless packets, and possibly first
+        # couple of rows before the first heartrate update)
+        before_rows=tmpdf.shape[0]
+        tmpdf=tmpdf.apply(pd.to_numeric, errors='coerce')
+        tmpdf=tmpdf.dropna()
+        tmpdf=tmpdf.reset_index(drop=True)
+        after_rows=tmpdf.shape[0]
+        percent_dropped=100*(before_rows-after_rows)/before_rows
+        print(f'Dropped {percent_dropped:1.2f}% of data')
 
-    df.to_csv('tmpfile.csv', header=False, index=False)
+        df=pd.concat([df,tmpdf],axis=0)
 
-    # Normalize each feature to range [0, 1e5]
-    nparr=df.to_numpy()
-    scaler=MinMaxScaler((0,1e5))
-    scaler.fit(nparr)
-    nparr=scaler.transform(nparr)
+        print('i: ' + str(i) + '  ' + tmpfn)
+        print(df)
+
+    # Could dump the full 52-dimension data here, but should only need the reduced file
+    #df.to_csv('tmpfile.csv', header=False, index=False)
 
     # Do PCA to reduce dimensions
+    nparr=df.to_numpy()
     pca = PCA(n_components=4)
     pca.fit(nparr)
     print(pca.explained_variance_ratio_)
     print(pca.singular_values_)
     nparrpca=pca.transform(nparr)
 
+    # Normalize each feature to range [0, 1e5]
+    scaler=MinMaxScaler((0,1e5))
+    scaler.fit(nparrpca)
+    nparrpca=scaler.transform(nparrpca)
+
     dfpca=pd.DataFrame(nparrpca)
-    dfpca.to_csv('tmpfilepca.csv', header=False, index=False)
+    dfpca.to_csv('pamap2pca.csv', header=False, index=False, float_format='%1.2f')
 
     exit(0)
