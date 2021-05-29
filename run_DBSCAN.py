@@ -41,7 +41,7 @@ __author__ = 'birkholz'
 
 # Helper function to plot DBSCAN results based on DBSCAN example in scikit-learn user guide
 # If data has more than two dimensions, the first two will be used
-def plot_dbscan_results(x, labels, core_sample_indices):
+def plot_dbscan_results(x, labels, core_sample_indices,small_points=False):
     core_samples_mask=np.zeros_like(labels, dtype=bool)
     core_samples_mask[core_sample_indices] = True
     n_clusters_=len(set(labels))-(1 if -1 in labels else 0)
@@ -56,17 +56,19 @@ def plot_dbscan_results(x, labels, core_sample_indices):
 
         class_member_mask = (labels == k)
 
-        xy = x[class_member_mask & core_samples_mask]
-        plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
-                 markeredgecolor=tuple(col), markersize=2)
-        #plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
-            #markeredgecolor='k', markersize=14)
+        if small_points:
+            xy = x[class_member_mask]
+            plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
+                     markeredgecolor=tuple(col), markersize=2)
 
-        xy = x[class_member_mask & ~core_samples_mask]
-        plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
-                 markeredgecolor=tuple(col), markersize=2)
-        #xy = x[class_member_mask & ~core_samples_mask]
-            #markeredgecolor='k', markersize=6)
+        else:
+            xy = x[class_member_mask & core_samples_mask]
+            plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
+                     markeredgecolor='k', markersize=12)
+
+            xy = x[class_member_mask & ~core_samples_mask]
+            plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
+                     markeredgecolor='k', markersize=6)
 
     # Show clusters (and noise)
     plt.title(f'Estimated number of clusters: {n_clusters_}')
@@ -95,6 +97,7 @@ if __name__ == '__main__':
     ap.add_argument("-k", "--kdist", required=True, help="k-dist (MinPts)")
     ap.add_argument("-e", "--eps", required=True, help="epsilon")
     ap.add_argument("-s", "--seed", help="random seed (only applicable with count)")
+    ap.add_argument("-m", "--smallpoints", action='store_true', help="plot small points, no difference between core/border")
     args=vars(ap.parse_args())
 
     # Set random seed, if specified. Otherwise, will default to rng with unspecified seed.
@@ -121,4 +124,4 @@ if __name__ == '__main__':
 
     # Run DBSCAN and show results
     mydbscan = DBSCAN(eps=eps,min_samples=k).fit(X)
-    plot_dbscan_results(X, mydbscan.labels_, mydbscan.core_sample_indices_)
+    plot_dbscan_results(X, mydbscan.labels_, mydbscan.core_sample_indices_,small_points=args['smallpoints'])
