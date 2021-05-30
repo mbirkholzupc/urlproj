@@ -144,42 +144,8 @@ def plot_dbscan_results(x, labels, core_sample_indices):
     plt.show()
 
 class TestGriDBSCAN(unittest.TestCase):
-    def test_one(self):
-        print('\nRunning test_one:')
-        n_samples = 4000
-        n_blobs = 4
-        X, y_true = make_blobs(n_samples=n_samples,
-                               centers=n_blobs,
-                               cluster_std=0.60,
-                               random_state=0)
-        X = X[:, ::-1]
-
-        plt.figure(1)
-        plt.scatter(X[:,0], X[:,1])
-        plt.show()
-
-        X, y_true = make_moons(n_samples=n_samples, noise=0.1)
-        plt.figure(1)
-        plt.scatter(X[:,0], X[:,1], s=100)
-        plt.show()
-        print('Done with test_one.')
-        self.assertEqual(1,1)
-
-    def test_two(self):
-        print('\nRunning test_two:')
-        n_samples = 4000
-        n_blobs = 4
-        X, y_true = make_blobs(n_samples=n_samples,
-                               centers=n_blobs,
-                               cluster_std=0.60,
-                               random_state=0)
-        X = X[:, ::-1]
-
-        mygridbscan=GriDBSCAN(eps=0.2,min_samples=10).fit(X)
-
-        print('Done with test_two.')
-        self.assertEqual(1,1)
-
+    # Note: Most of these tests are simply a test harness to run the algorithm and
+    #       inspect intermediate values
     def test_minmax(self):
         print('\nRunning test_minmax:')
         n_samples = 10000
@@ -239,8 +205,8 @@ class TestGriDBSCANAuto(unittest.TestCase):
         our_timing = RunningStat()
         their_timing = RunningStat()
 
-        # 100 iterations to average time
-        for rs in range(1):
+        # 10 iterations to average time
+        for rs in range(10):
             n_samples = 20000
             n_blobs = 4
             X, y_true = make_blobs(n_samples=n_samples,
@@ -267,7 +233,7 @@ class TestGriDBSCANAuto(unittest.TestCase):
 
             print('theirs...')
             start_time=time.time()
-            refdbscan=sklDBSCAN(eps=0.5,min_samples=4,algorithm='brute',n_jobs=1).fit(X)
+            refdbscan=sklDBSCAN(eps=0.5,min_samples=4,n_jobs=1).fit(X)
             #refdbscan=DBSCAN(eps=0.5,min_samples=4).fit(X)
             end_time=time.time()
             their_timing.push(end_time-start_time)
@@ -298,8 +264,8 @@ class TestGriDBSCANAuto(unittest.TestCase):
         our_timing = RunningStat()
         their_timing = RunningStat()
 
-        # 100 iterations to average time
-        for rs in range(1):
+        # 10 iterations to average time
+        for rs in range(10):
             X = gen_gridbscan_synth10k(random_state=rs)
 
             '''
@@ -320,9 +286,7 @@ class TestGriDBSCANAuto(unittest.TestCase):
 
             print('theirs...')
             start_time=time.time()
-            #refdbscan=sklDBSCAN(eps=0.5,min_samples=4,algorithm='brute',n_jobs=1).fit(X)
-            #refdbscan=sklDBSCAN(eps=0.5,min_samples=4,n_jobs=1).fit(X)
-            refdbscan=DBSCAN(eps=0.5,min_samples=4).fit(X)
+            refdbscan=DBSCAN(eps=0.5,min_samples=4,n_jobs=1).fit(X)
             end_time=time.time()
             their_timing.push(end_time-start_time)
             print(mygridbscan.core_sample_indices_)
