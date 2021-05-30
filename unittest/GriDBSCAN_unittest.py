@@ -143,6 +143,13 @@ def plot_dbscan_results(x, labels, core_sample_indices):
     plt.title(f'Estimated number of clusters: {n_clusters_}')
     plt.show()
 
+def gen_shuffle_unshuffle_idx(data):
+    shuffle_idx=np.random.permutation(len(data))
+    revidx=[(x,y) for x,y in enumerate(shuffle_idx)]
+    revidx=sorted(revidx, key=lambda x: x[1])
+    unshuffle_idx=np.array([x[0] for x in revidx])
+    return shuffle_idx, unshuffle_idx
+
 class TestGriDBSCAN(unittest.TestCase):
     # Note: Most of these tests are simply a test harness to run the algorithm and
     #       inspect intermediate values
@@ -160,6 +167,7 @@ class TestGriDBSCAN(unittest.TestCase):
         mygridbscan=GriDBSCAN(eps=0.2,min_samples=10).fit(X)
         mygridbscan=GriDBSCAN(eps=0.2,min_samples=10,grid=(2,2)).fit(X)
         mygridbscan=GriDBSCAN(eps=0.2,min_samples=10,grid=(6,2)).fit(X)
+        self.assertEqual(1,1)
 
     def test_innerouter(self):
         print('\nRunning test_innerouter:')
@@ -173,6 +181,7 @@ class TestGriDBSCAN(unittest.TestCase):
         print(X)
 
         mygridbscan=GriDBSCAN(eps=0.2,min_samples=10,grid=(4,5)).fit(X)
+        self.assertEqual(1,1)
 
     def test_blobs(self):
         print('\nRunning test_blobs:')
@@ -183,11 +192,6 @@ class TestGriDBSCAN(unittest.TestCase):
                                cluster_std=0.60,
                                random_state=2)
         X = X[:, ::-1]
-
-        # Show points
-        plt.figure(1)
-        plt.scatter(X[:,0], X[:,1])
-        plt.show()
 
         mygridbscan=GriDBSCAN(eps=0.5,min_samples=4,grid=(6,2)).fit(X)
 
@@ -200,14 +204,14 @@ class TestGriDBSCAN(unittest.TestCase):
         print(refdbscan.labels_)
         print(refdbscan.core_sample_indices_)
 
+        self.assertEqual(True,dbscan_equivalent_results(
+                         mygridbscan.labels_, mygridbscan.core_sample_indices_,
+                         refdbscan.labels_, refdbscan.core_sample_indices_))
+
 class TestGriDBSCANAuto(unittest.TestCase):
     def test_auto1(self):
-        our_timing = RunningStat()
-        their_timing = RunningStat()
-
-        # 10 iterations to average time
         for rs in range(10):
-            n_samples = 20000
+            n_samples = 5000
             n_blobs = 4
             X, y_true = make_blobs(n_samples=n_samples,
                                    centers=n_blobs,
@@ -215,102 +219,195 @@ class TestGriDBSCANAuto(unittest.TestCase):
                                    random_state=rs)
             X = X[:, ::-1]
 
-            '''
             # Shuffle the data to force (possibly) some border points to be different
             shuffle, unshuffle = gen_shuffle_unshuffle_idx(X)
             shuffleX = X[shuffle]
-            mydbscan=DBSCAN(eps=43,min_samples=4).fit(shuffleX)
+            mygridbscan=GriDBSCAN(eps=0.5,min_samples=4,grid=(5,5)).fit(shuffleX)
             # Unshuffle the results so they can be compared with original indices
-            unshuffled_labels=mydbscan.labels_[unshuffle]
-            unshuffled_corepts=np.array([shuffle[x] for x in mydbscan.core_sample_indices_])
-            mygridbscan=GriDBSCAN(eps=0.5,min_samples=4,grid=(3,4)).fit(shuffleX)
-            '''
-            print('ours...')
-            start_time=time.time()
-            mygridbscan=GriDBSCAN(eps=0.5,min_samples=4,grid=(5,5)).fit(X)
-            end_time=time.time()
-            our_timing.push(end_time-start_time)
+            unshuffled_labels=mygridbscan.labels_[unshuffle]
+            unshuffled_corepts=np.array([shuffle[x] for x in mygridbscan.core_sample_indices_])
 
-            print('theirs...')
-            start_time=time.time()
             refdbscan=sklDBSCAN(eps=0.5,min_samples=4,n_jobs=1).fit(X)
-            #refdbscan=DBSCAN(eps=0.5,min_samples=4).fit(X)
-            end_time=time.time()
-            their_timing.push(end_time-start_time)
-            print(mygridbscan.core_sample_indices_)
-            print(refdbscan.core_sample_indices_)
-            print(mygridbscan.labels_)
-            print(refdbscan.labels_)
 
             uniquelabels1 = np.unique(mygridbscan.labels_)
             uniquelabels2 = np.unique(refdbscan.labels_)
-            print(uniquelabels1)
-            print(uniquelabels2)
 
-            #plot_dbscan_results(X, mygridbscan.labels_, mygridbscan.core_sample_indices_)
-
+            #plot_dbscan_results(X, unshuffled_labels, unshuffled_corepts)
             #plot_dbscan_results(X, refdbscan.labels_, refdbscan.core_sample_indices_)
 
             print(f'checking results for seed: {rs}')
             self.assertEqual(True,dbscan_equivalent_results(
-                             #unshuffled_labels, unshuffled_corepts,
-                             mygridbscan.labels_, mygridbscan.core_sample_indices_,
+                             unshuffled_labels, unshuffled_corepts,
+                             #mygridbscan.labels_, mygridbscan.core_sample_indices_,
                              refdbscan.labels_, refdbscan.core_sample_indices_))
-        print('Timing results:')
-        print(f'Ours:   {our_timing.mean()} ({our_timing.standard_deviation()})')
-        print(f'Theirs: {their_timing.mean()} ({their_timing.standard_deviation()})')
 
     def test_auto2(self):
         our_timing = RunningStat()
         their_timing = RunningStat()
 
-        # 10 iterations to average time
+        # 10 iterations
         for rs in range(10):
             X = gen_gridbscan_synth10k(random_state=rs)
 
-            '''
             # Shuffle the data to force (possibly) some border points to be different
             shuffle, unshuffle = gen_shuffle_unshuffle_idx(X)
             shuffleX = X[shuffle]
-            mydbscan=DBSCAN(eps=43,min_samples=4).fit(shuffleX)
+            mygridbscan=GriDBSCAN(eps=10,min_samples=4,grid=(5,5)).fit(shuffleX)
             # Unshuffle the results so they can be compared with original indices
-            unshuffled_labels=mydbscan.labels_[unshuffle]
-            unshuffled_corepts=np.array([shuffle[x] for x in mydbscan.core_sample_indices_])
-            mygridbscan=GriDBSCAN(eps=0.5,min_samples=4,grid=(3,4)).fit(shuffleX)
-            '''
-            print('ours...')
-            start_time=time.time()
-            mygridbscan=GriDBSCAN(eps=0.5,min_samples=4,grid=(5,5)).fit(X)
-            end_time=time.time()
-            our_timing.push(end_time-start_time)
+            unshuffled_labels=mygridbscan.labels_[unshuffle]
+            unshuffled_corepts=np.array([shuffle[x] for x in mygridbscan.core_sample_indices_])
 
-            print('theirs...')
-            start_time=time.time()
-            refdbscan=DBSCAN(eps=0.5,min_samples=4,n_jobs=1).fit(X)
-            end_time=time.time()
-            their_timing.push(end_time-start_time)
-            print(mygridbscan.core_sample_indices_)
-            print(refdbscan.core_sample_indices_)
-            print(mygridbscan.labels_)
-            print(refdbscan.labels_)
+            refdbscan=DBSCAN(eps=10,min_samples=4,n_jobs=1).fit(X)
 
             uniquelabels1 = np.unique(mygridbscan.labels_)
             uniquelabels2 = np.unique(refdbscan.labels_)
-            print(uniquelabels1)
-            print(uniquelabels2)
 
-            #plot_dbscan_results(X, mygridbscan.labels_, mygridbscan.core_sample_indices_)
-
+            #plot_dbscan_results(X, unshuffled_labels, unshuffled_corepts)
             #plot_dbscan_results(X, refdbscan.labels_, refdbscan.core_sample_indices_)
 
             print(f'checking results for seed: {rs}')
             self.assertEqual(True,dbscan_equivalent_results(
-                             #unshuffled_labels, unshuffled_corepts,
-                             mygridbscan.labels_, mygridbscan.core_sample_indices_,
+                             unshuffled_labels, unshuffled_corepts,
+                             #mygridbscan.labels_, mygridbscan.core_sample_indices_,
                              refdbscan.labels_, refdbscan.core_sample_indices_))
-        print('Timing results:')
-        print(f'Ours:   {our_timing.mean()} ({our_timing.standard_deviation()})')
-        print(f'Theirs: {their_timing.mean()} ({their_timing.standard_deviation()})')
+
+    def test_auto3(self):
+        our_timing = RunningStat()
+        their_timing = RunningStat()
+
+        # 200 iterations
+        for rs in range(200):
+            X = gen_dbscan_dataset1(random_state=rs)
+            dims=X.shape[1]
+            # Generate random grid from 1x1 up to 5x5 (not necessarily square)
+            grid=tuple(np.random.randint(1,high=6,size=dims))
+            print(grid)
+
+            # Shuffle the data to force (possibly) some border points to be different
+            shuffle, unshuffle = gen_shuffle_unshuffle_idx(X)
+            shuffleX = X[shuffle]
+            mygridbscan=GriDBSCAN(eps=43,min_samples=4,grid=grid).fit(shuffleX)
+            # Unshuffle the results so they can be compared with original indices
+            unshuffled_labels=mygridbscan.labels_[unshuffle]
+            unshuffled_corepts=np.array([shuffle[x] for x in mygridbscan.core_sample_indices_])
+
+            refdbscan=DBSCAN(eps=43,min_samples=4,n_jobs=1).fit(X)
+
+            uniquelabels1 = np.unique(mygridbscan.labels_)
+            uniquelabels2 = np.unique(refdbscan.labels_)
+
+            #plot_dbscan_results(X, unshuffled_labels, unshuffled_corepts)
+            #plot_dbscan_results(X, refdbscan.labels_, refdbscan.core_sample_indices_)
+
+            print(f'checking results for seed: {rs}')
+            self.assertEqual(True,dbscan_equivalent_results(
+                             unshuffled_labels, unshuffled_corepts,
+                             #mygridbscan.labels_, mygridbscan.core_sample_indices_,
+                             refdbscan.labels_, refdbscan.core_sample_indices_))
+
+    def test_auto4(self):
+        our_timing = RunningStat()
+        their_timing = RunningStat()
+
+        # 100 iterations
+        for rs in range(100):
+            X = gen_dbscan_dataset2(random_state=rs)
+            dims=X.shape[1]
+            # Generate random grid from 1x1 up to 5x5 (not necessarily square)
+            grid=tuple(np.random.randint(1,high=6,size=dims))
+            print(grid)
+
+            print('ours...')
+            # Shuffle the data to force (possibly) some border points to be different
+            shuffle, unshuffle = gen_shuffle_unshuffle_idx(X)
+            shuffleX = X[shuffle]
+            mygridbscan=GriDBSCAN(eps=36,min_samples=4,grid=grid).fit(shuffleX)
+            # Unshuffle the results so they can be compared with original indices
+            unshuffled_labels=mygridbscan.labels_[unshuffle]
+            unshuffled_corepts=np.array([shuffle[x] for x in mygridbscan.core_sample_indices_])
+
+            print('theirs...')
+            refdbscan=DBSCAN(eps=36,min_samples=4,n_jobs=1).fit(X)
+
+            uniquelabels1 = np.unique(mygridbscan.labels_)
+            uniquelabels2 = np.unique(refdbscan.labels_)
+
+            #plot_dbscan_results(X, unshuffled_labels, unshuffled_corepts)
+            #plot_dbscan_results(X, refdbscan.labels_, refdbscan.core_sample_indices_)
+
+            print(f'checking results for seed: {rs}')
+            self.assertEqual(True,dbscan_equivalent_results(
+                             unshuffled_labels, unshuffled_corepts,
+                             #mygridbscan.labels_, mygridbscan.core_sample_indices_,
+                             refdbscan.labels_, refdbscan.core_sample_indices_))
+
+    def test_auto5(self):
+        our_timing = RunningStat()
+        their_timing = RunningStat()
+
+        # 500 iterations
+        for rs in range(500):
+            X = gen_dbscan_dataset3(random_state=rs)
+            dims=X.shape[1]
+            # Generate random grid from 1x1 up to 5x5 (not necessarily square)
+            grid=tuple(np.random.randint(1,high=6,size=dims))
+            print(grid)
+
+            # Shuffle the data to force (possibly) some border points to be different
+            shuffle, unshuffle = gen_shuffle_unshuffle_idx(X)
+            shuffleX = X[shuffle]
+            mygridbscan=GriDBSCAN(eps=40,min_samples=4,grid=grid).fit(shuffleX)
+            # Unshuffle the results so they can be compared with original indices
+            unshuffled_labels=mygridbscan.labels_[unshuffle]
+            unshuffled_corepts=np.array([shuffle[x] for x in mygridbscan.core_sample_indices_])
+
+            refdbscan=DBSCAN(eps=40,min_samples=4,n_jobs=1).fit(X)
+
+            uniquelabels1 = np.unique(mygridbscan.labels_)
+            uniquelabels2 = np.unique(refdbscan.labels_)
+
+            #plot_dbscan_results(X, unshuffled_labels, unshuffled_corepts)
+            #plot_dbscan_results(X, refdbscan.labels_, refdbscan.core_sample_indices_)
+
+            print(f'checking results for seed: {rs}')
+            self.assertEqual(True,dbscan_equivalent_results(
+                             unshuffled_labels, unshuffled_corepts,
+                             #mygridbscan.labels_, mygridbscan.core_sample_indices_,
+                             refdbscan.labels_, refdbscan.core_sample_indices_))
+
+    def test_auto6(self):
+        # Dataset from https://archive.ics.uci.edu/ml/datasets/banknote+authentication
+        df=pd.read_csv('../data/banknotepreprocessed.csv', header=None)
+        X=df.to_numpy()
+        dims=X.shape[1]
+
+        # 10 iterations, data same, but order and grid change
+        for rs in range(100):
+            # Generate random grid from 1x1x1x1 up to 3x3x3x3 (not necessarily square)
+            grid=tuple(np.random.randint(1,high=4,size=dims))
+            print(grid)
+
+            # Shuffle the data to force (possibly) some border points to be different
+            shuffle, unshuffle = gen_shuffle_unshuffle_idx(X)
+            shuffleX = X[shuffle]
+            mygridbscan=GriDBSCAN(eps=1.66,min_samples=8,grid=grid).fit(shuffleX)
+            # Unshuffle the results so they can be compared with original indices
+            unshuffled_labels=mygridbscan.labels_[unshuffle]
+            unshuffled_corepts=np.array([shuffle[x] for x in mygridbscan.core_sample_indices_])
+
+            refdbscan=DBSCAN(eps=1.66,min_samples=8,n_jobs=1).fit(X)
+
+            uniquelabels1 = np.unique(mygridbscan.labels_)
+            uniquelabels2 = np.unique(refdbscan.labels_)
+
+            #plot_dbscan_results(X, unshuffled_labels, unshuffled_corepts)
+            #plot_dbscan_results(X, refdbscan.labels_, refdbscan.core_sample_indices_)
+
+            print(f'checking results for seed: {rs}')
+            self.assertEqual(True,dbscan_equivalent_results(
+                             unshuffled_labels, unshuffled_corepts,
+                             #mygridbscan.labels_, mygridbscan.core_sample_indices_,
+                             refdbscan.labels_, refdbscan.core_sample_indices_))
 
 
 if __name__ == '__main__':
