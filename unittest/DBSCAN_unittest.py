@@ -38,7 +38,7 @@ from kemlglearn.cluster.DBSCAN import DBSCAN, NOISE, NO_CLUSTER
 from sklearn.cluster import DBSCAN as sklDBSCAN
 
 from kemlglearn.datasets.gen_dbscan_dataset import gen_dbscan_dataset1, gen_dbscan_dataset2, gen_dbscan_dataset3, \
-                                        gen_dbscan_blobs, gen_dbscan_moons
+                                        gen_dbscan_blobs, gen_dbscan_moons, gen_gridbscan_synth10k
 
 
 # Helper function to plot DBSCAN results based on DBSCAN example in scikit-learn user guide
@@ -229,31 +229,36 @@ class TestDBSCAN(unittest.TestCase):
     def test_timing(self):
         our_timing = 0
         their_timing = 0
-        iterations=100
+        iterations=10
+
+        # For some reason, the first iteration is always much longer
+        # than the rest (caching, other???). Let's discard that result
+        first_iteration = True
 
         for rs in range(iterations):
             X=gen_dbscan_dataset1(random_state=rs)
+            #X=gen_gridbscan_synth10k(random_state=rs)
 
-            # Shuffle the data since that greatly affects runtime. If the data is not shuffled,
-            # there is about two orders of magnitude difference in the timing result.
-            # We have already established that shuffled/unshuffled data results in equivalent
-            # clustering, so we can test the data in the same order for both implementations.
             shuffle, unshuffle = gen_shuffle_unshuffle_idx(X)
             shuffleX = X[shuffle]
             start_time=time.time()
-            mydbscan=DBSCAN(eps=43,min_samples=4).fit(X)
+            mydbscan=DBSCAN(eps=43,min_samples=4).fit(shuffleX)
             end_time=time.time()
-            our_timing += (end_time-start_time)
+            if not first_iteration:
+                our_timing += (end_time-start_time)
 
             start_time=time.time()
             refdbscan=sklDBSCAN(eps=43,min_samples=4).fit(shuffleX)
             end_time=time.time()
-            their_timing += (end_time-start_time)
+            if not first_iteration:
+                their_timing += (end_time-start_time)
+            first_iteration = False
 
         print('Timing results:')
-        print(f'Ours:   {our_timing/iterations}')
-        print(f'Theirs: {their_timing/iterations}')
+        print(f'Ours:   {our_timing/(iterations-1)}')
+        print(f'Theirs: {their_timing/(iterations-1)}')
 
+# These aren't really "tests," but rather demonstrations
 class TestDBSCANInteractive(unittest.TestCase):
     def test_one(self):
         n_samples = 4000
