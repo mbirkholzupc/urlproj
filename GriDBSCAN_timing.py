@@ -144,15 +144,18 @@ def test_gridbscan_sequoia(dataset):
     print(dimrange)
 
 
-    #num_samples = [9000, 10400, 12500]
-    num_samples = [9000]
+    num_samples = [9000, 10400, 12500]
     eps=5000         # Approximate epsilon calculated from Figure 11 in GriDBSCAN paper
     minpts=4         # Standard 2-D value
     max_grid_idx=27  # Calculate up to 26x26
+    timing_actual_results = {}
+    timing_theoretical_results = {}
 
     for n in num_samples:
         # Create smaller dataset
         X=the_rng.choice(Xfull,size=n,replace=False)
+        timing_theoretical_results[n] = []
+        timing_actual_results[n] = []
 
         # Calculate baseline DBSCAN result
         start_time=time.time()
@@ -168,38 +171,34 @@ def test_gridbscan_sequoia(dataset):
             gridbscan=GriDBSCAN(eps=eps,min_samples=minpts,grid=grid).fit(X)
             end_time=time.time()
             gridbscan_elapsed=end_time-start_time
-            theoretical_improvement_total=dbscan_elapsed/gridbscan.dbscan_total_time_
+            theoretical_improvement=dbscan_elapsed/gridbscan.dbscan_total_time_
             actual_improvement=dbscan_elapsed/gridbscan_elapsed
             print(f'{i:02d}: {gridbscan_elapsed:1.4f} {gridbscan.dbscan_total_time_:1.4f}')
-            print(f'\t\t theoretical improvement: {theoretical_improvement_total:02.4f}')
+            print(f'\t\t theoretical improvement: {theoretical_improvement:02.4f}')
             print(f'\t\t      actual improvement: {actual_improvement:02.4f}')
+            timing_theoretical_results[n].append(theoretical_improvement)
+            timing_actual_results[n].append(actual_improvement)
 
+    x_coord=[idx**2 for idx in range(1,max_grid_idx)]
+    lines=['sb-','sm-','sy-']
+    legendlines=[]
+    legendlabels=[]
+    for i,n in enumerate(num_samples):
+        tmp, = plt.plot(x_coord,timing_theoretical_results[n],lines[i])
+        legendlines.append(tmp)
+        legendlabels.append('dataset ' + str(n))
+    plt.legend(legendlines,legendlabels)
+    plt.show()
 
-    #X=the_rng.choice(X,size=int(args['count']),replace=False)
+    legendlines=[]
+    legendlabels=[]
+    for i,n in enumerate(num_samples):
+        tmp, = plt.plot(x_coord,timing_actual_results[n],lines[i])
+        legendlines.append(tmp)
+        legendlabels.append('dataset ' + str(n))
+    plt.legend(legendlines,legendlabels)
+    plt.show()
 
-    """
-    shuffle, _ = gen_shuffle_unshuffle_idx(X)
-    X=X[shuffle]
-
-    if use_grid:
-        max_grid=max_grid_size(X,eps)
-        max_grid_square=min(max_grid)
-        max_grid_square=min(max_grid_square,30)
-        for i in range(1,max_grid_square+1):
-            grid=tuple([i]*len(max_grid))
-            start_time=time.time()
-            #gridbscan=GriDBSCAN(eps=eps,min_samples=minpts,grid=grid,algorithm='brute').fit(X)
-            gridbscan=GriDBSCAN(eps=eps,min_samples=minpts,grid=grid).fit(X)
-            end_time=time.time()
-            print(f'{i}: {(end_time-start_time)}')
-            print(f'     {gridbscan.dbscan_total_time_}')
-    else:
-        start_time=time.time()
-        #dbscan=DBSCAN(eps=eps,min_samples=minpts,algorithm='brute',n_jobs=1).fit(X)
-        dbscan=DBSCAN(eps=eps,min_samples=minpts).fit(X)
-        end_time=time.time()
-        print(f'DBSCAN: {(end_time-start_time)}')
-    """
 
     return
 
