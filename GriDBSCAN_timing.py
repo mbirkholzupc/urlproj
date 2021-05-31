@@ -159,6 +159,7 @@ def test_gridbscan_sequoia(dataset):
 
         # Calculate baseline DBSCAN result
         start_time=time.time()
+        #dbscan=DBSCAN(eps=eps,min_samples=minpts,algorithm='brute',n_jobs=1).fit(X)
         dbscan=DBSCAN(eps=eps,min_samples=minpts).fit(X)
         end_time=time.time()
         dbscan_elapsed=end_time-start_time
@@ -168,6 +169,7 @@ def test_gridbscan_sequoia(dataset):
         for i in range(1,max_grid_idx):
             grid=(i,i,)
             start_time=time.time()
+            #gridbscan=GriDBSCAN(eps=eps,min_samples=minpts,grid=grid,algorithm='brute',n_jobs=1).fit(X)
             gridbscan=GriDBSCAN(eps=eps,min_samples=minpts,grid=grid).fit(X)
             end_time=time.time()
             gridbscan_elapsed=end_time-start_time
@@ -199,9 +201,31 @@ def test_gridbscan_sequoia(dataset):
     plt.legend(legendlines,legendlabels)
     plt.show()
 
-
     return
 
+@profile
+def test_dbscan_profile(dataset,k,eps):
+    """
+    This routine calls DBSCAN and is profiled
+    """
+    # Calculate baseline DBSCAN result
+    X=dataset
+    dbscan=DBSCAN(eps=eps,min_samples=k).fit(X)
+
+    # Nothing else to do: the profile decorator will take care of the rest
+    return
+
+@profile
+def test_gridbscan_profile(dataset,k,eps):
+    """
+    This routine calls GriDBSCAN and is profiled
+    """
+    # Calculate baseline GriDBSCAN result
+    X=dataset
+    dbscan=GriDBSCAN(eps=eps,min_samples=k,grid=(5,5)).fit(X)
+
+    # Nothing else to do: the profile decorator will take care of the rest
+    return
 
 if __name__ == '__main__':
     ap=argparse.ArgumentParser()
@@ -227,7 +251,7 @@ if __name__ == '__main__':
 
     testid=args['test']
 
-    if testid in ['5']:
+    if testid in ['5', 'profile']:
         # Set MinPts (k) and Epsilon
         k=int(args['kdist'])
         eps=float(args['eps'])
@@ -249,6 +273,9 @@ if __name__ == '__main__':
         test2(X,eps=eps,minpts=k,use_grid=False)
     elif testid=='sequoia':
         test_gridbscan_sequoia(X)
+    elif testid=='profile':
+        test_dbscan_profile(X,k,eps)
+        test_gridbscan_profile(X,k,eps)
     else:
         raise Exception('Unrecognized test: ' + testid)
 
