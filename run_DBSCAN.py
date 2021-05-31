@@ -52,7 +52,8 @@ def plot_dbscan_results(x, labels, core_sample_indices,small_points=False):
 
     for k, col in zip(unique_labels, colors):
         if k == -1:
-            col = [0, 0, 0, 1] # Black for noise
+            #col = [0, 0, 0, 1] # Black for noise
+            col = [0, 0, 0, 0.1] # Black for noise, but set alpha to 0.1 so it doesn't block clusters
 
         class_member_mask = (labels == k)
 
