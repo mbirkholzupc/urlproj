@@ -143,6 +143,38 @@ def test_gridbscan_sequoia(dataset):
 
     print(dimrange)
 
+
+    #num_samples = [9000, 10400, 12500]
+    num_samples = [9000]
+    eps=5000         # Approximate epsilon calculated from Figure 11 in GriDBSCAN paper
+    minpts=4         # Standard 2-D value
+    max_grid_idx=27  # Calculate up to 26x26
+
+    for n in num_samples:
+        # Create smaller dataset
+        X=the_rng.choice(Xfull,size=n,replace=False)
+
+        # Calculate baseline DBSCAN result
+        start_time=time.time()
+        dbscan=DBSCAN(eps=eps,min_samples=minpts).fit(X)
+        end_time=time.time()
+        dbscan_elapsed=end_time-start_time
+        print(f'baseline: {dbscan_elapsed}')
+
+        # Calculate results for various grid sizes
+        for i in range(1,max_grid_idx):
+            grid=(i,i,)
+            start_time=time.time()
+            gridbscan=GriDBSCAN(eps=eps,min_samples=minpts,grid=grid).fit(X)
+            end_time=time.time()
+            gridbscan_elapsed=end_time-start_time
+            theoretical_improvement_total=dbscan_elapsed/gridbscan.dbscan_total_time_
+            actual_improvement=dbscan_elapsed/gridbscan_elapsed
+            print(f'{i:02d}: {gridbscan_elapsed:1.4f} {gridbscan.dbscan_total_time_:1.4f}')
+            print(f'\t\t theoretical improvement: {theoretical_improvement_total:02.4f}')
+            print(f'\t\t      actual improvement: {actual_improvement:02.4f}')
+
+
     #X=the_rng.choice(X,size=int(args['count']),replace=False)
 
     """
@@ -194,11 +226,13 @@ if __name__ == '__main__':
         if args['count']:
             X=the_rng.choice(X,size=int(args['count']),replace=False)
 
+    testid=args['test']
+
+    if testid in ['5']:
         # Set MinPts (k) and Epsilon
         k=int(args['kdist'])
         eps=float(args['eps'])
 
-    testid=args['test']
     if testid=='1':
         test1(gen_dbscan_dataset1,eps=43,minpts=4,use_grid=True)
         test1(gen_dbscan_dataset1,eps=43,minpts=4,use_grid=False)
