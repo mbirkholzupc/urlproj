@@ -216,15 +216,415 @@ def test_dbscan_profile(dataset,k,eps):
     return
 
 @profile
-def test_gridbscan_profile(dataset,k,eps):
+def test_gridbscan_profile(dataset,k,eps,grid=(5,5)):
     """
     This routine calls GriDBSCAN and is profiled
     """
     # Calculate baseline GriDBSCAN result
     X=dataset
-    dbscan=GriDBSCAN(eps=eps,min_samples=k,grid=(5,5)).fit(X)
+    dbscan=GriDBSCAN(eps=eps,min_samples=k,grid=grid).fit(X)
 
     # Nothing else to do: the profile decorator will take care of the rest
+    return
+
+def test_pamap2_varyn(dataset):
+    """
+    This routine performs a series of tests on the PAMAP2 dataset varying number of samples
+    """
+    Xfull=dataset
+
+    mins=[]
+    maxs=[]
+    for i in range(len(Xfull[0])):
+        mins.append(min(Xfull[:,i]))
+        maxs.append(max(Xfull[:,i]))
+    mins=np.array(mins)
+    maxs=np.array(maxs)
+
+    dimrange=[themax-themin for themax, themin in zip(maxs,mins)]
+    dimrange=np.array(dimrange)
+
+    print(dimrange)
+
+    #minpts = [10, 50, 100]
+    #eps=[500, 1000, 2000]
+    num_samples = [1000, 10000, 100000, 1000000]
+    minpts = 10
+    eps=500
+    grid=(4,4,4,4)
+    timing_actual_results = []
+    timing_theoretical_results = []
+
+    for n in num_samples:
+        # Create smaller dataset
+        X=the_rng.choice(Xfull,size=n,replace=False)
+
+        # Calculate baseline DBSCAN result
+        start_time=time.time()
+        dbscan=DBSCAN(eps=eps,min_samples=minpts).fit(X)
+        end_time=time.time()
+        dbscan_elapsed=end_time-start_time
+        print(f'baseline: {dbscan_elapsed}')
+
+        # Calculate results for GriDBSCAN
+        start_time=time.time()
+        gridbscan=GriDBSCAN(eps=eps,min_samples=minpts,grid=grid).fit(X)
+        end_time=time.time()
+        gridbscan_elapsed=end_time-start_time
+        theoretical_improvement=dbscan_elapsed/gridbscan.dbscan_total_time_
+        actual_improvement=dbscan_elapsed/gridbscan_elapsed
+        print(f'{i:02d}: {gridbscan_elapsed:1.4f} {gridbscan.dbscan_total_time_:1.4f}')
+        print(f'\t\t theoretical improvement: {theoretical_improvement:02.4f}')
+        print(f'\t\t      actual improvement: {actual_improvement:02.4f}')
+        timing_theoretical_results.append(theoretical_improvement)
+        timing_actual_results.append(actual_improvement)
+
+    x_coord=[n for n in num_samples]
+    style=['bo']
+    tmp, = plt.plot(x_coord,timing_theoretical_results, 'bo-')
+    stylelines=[tmp]
+    plt.title('Theoretical Improvement')
+    #plt.legend(stylelines,['Theoretical Improvement'])
+    plt.show()
+
+    x_coord=[n for n in num_samples]
+    tmp, = plt.plot(x_coord,timing_actual_results, 'bo-')
+    stylelines=[tmp]
+    plt.title('Actual Improvement')
+    #plt.legend(stylelines,['Actual Improvement'])
+    plt.show()
+
+    return
+
+def test_pamap2_varyk(dataset):
+    """
+    This routine performs a series of tests on the PAMAP2 dataset varying min points
+    """
+    #eps=[500, 1000, 2000]
+    num_samples = 100000
+    minpts = [10, 50, 100]
+    eps=500
+    grid=(4,4,4,4)
+
+    timing_actual_results = []
+    timing_theoretical_results = []
+
+    Xfull=dataset
+    # Create smaller dataset
+    X=the_rng.choice(Xfull,size=num_samples,replace=False)
+
+    mins=[]
+    maxs=[]
+    for i in range(len(Xfull[0])):
+        mins.append(min(Xfull[:,i]))
+        maxs.append(max(Xfull[:,i]))
+    mins=np.array(mins)
+    maxs=np.array(maxs)
+
+    dimrange=[themax-themin for themax, themin in zip(maxs,mins)]
+    dimrange=np.array(dimrange)
+
+    print(dimrange)
+
+    for k in minpts:
+        # Calculate baseline DBSCAN result
+        start_time=time.time()
+        dbscan=DBSCAN(eps=eps,min_samples=k).fit(X)
+        end_time=time.time()
+        dbscan_elapsed=end_time-start_time
+        print(f'baseline: {dbscan_elapsed}')
+
+        # Calculate results for GriDBSCAN
+        start_time=time.time()
+        gridbscan=GriDBSCAN(eps=eps,min_samples=k,grid=grid).fit(X)
+        end_time=time.time()
+        gridbscan_elapsed=end_time-start_time
+        theoretical_improvement=dbscan_elapsed/gridbscan.dbscan_total_time_
+        actual_improvement=dbscan_elapsed/gridbscan_elapsed
+        print(f'{i:02d}: {gridbscan_elapsed:1.4f} {gridbscan.dbscan_total_time_:1.4f}')
+        print(f'\t\t theoretical improvement: {theoretical_improvement:02.4f}')
+        print(f'\t\t      actual improvement: {actual_improvement:02.4f}')
+        timing_theoretical_results.append(theoretical_improvement)
+        timing_actual_results.append(actual_improvement)
+
+    x_coord=[k for k in minpts]
+    style=['bo']
+    tmp, = plt.plot(x_coord,timing_theoretical_results, 'bo-')
+    stylelines=[tmp]
+    plt.title('Theoretical Improvement')
+    plt.show()
+
+    x_coord=[k for k in minpts]
+    tmp, = plt.plot(x_coord,timing_actual_results, 'bo-')
+    stylelines=[tmp]
+    plt.title('Actual Improvement')
+    plt.show()
+
+    return
+
+def test_pamap2_varyeps(dataset):
+    """
+    This routine performs a series of tests on the PAMAP2 dataset varying epsilon
+    """
+    eps=[500, 1000, 2000]
+    num_samples = 100000
+    minpts = 50
+    grid=(4,4,4,4)
+
+    timing_actual_results = []
+    timing_theoretical_results = []
+
+    Xfull=dataset
+    # Create smaller dataset
+    X=the_rng.choice(Xfull,size=num_samples,replace=False)
+
+    mins=[]
+    maxs=[]
+    for i in range(len(Xfull[0])):
+        mins.append(min(Xfull[:,i]))
+        maxs.append(max(Xfull[:,i]))
+    mins=np.array(mins)
+    maxs=np.array(maxs)
+
+    dimrange=[themax-themin for themax, themin in zip(maxs,mins)]
+    dimrange=np.array(dimrange)
+
+    print(dimrange)
+
+    for e in eps:
+        # Calculate baseline DBSCAN result
+        start_time=time.time()
+        dbscan=DBSCAN(eps=e,min_samples=minpts).fit(X)
+        end_time=time.time()
+        dbscan_elapsed=end_time-start_time
+        print(f'baseline: {dbscan_elapsed}')
+
+        # Calculate results for GriDBSCAN
+        start_time=time.time()
+        gridbscan=GriDBSCAN(eps=e,min_samples=minpts,grid=grid).fit(X)
+        end_time=time.time()
+        gridbscan_elapsed=end_time-start_time
+        theoretical_improvement=dbscan_elapsed/gridbscan.dbscan_total_time_
+        actual_improvement=dbscan_elapsed/gridbscan_elapsed
+        print(f'{i:02d}: {gridbscan_elapsed:1.4f} {gridbscan.dbscan_total_time_:1.4f}')
+        print(f'\t\t theoretical improvement: {theoretical_improvement:02.4f}')
+        print(f'\t\t      actual improvement: {actual_improvement:02.4f}')
+        timing_theoretical_results.append(theoretical_improvement)
+        timing_actual_results.append(actual_improvement)
+
+    x_coord=[e for e in eps]
+    style=['bo']
+    tmp, = plt.plot(x_coord,timing_theoretical_results, 'bo-')
+    stylelines=[tmp]
+    plt.title('Theoretical Improvement')
+    plt.show()
+
+    x_coord=[e for e in eps]
+    tmp, = plt.plot(x_coord,timing_actual_results, 'bo-')
+    stylelines=[tmp]
+    plt.title('Actual Improvement')
+    plt.show()
+
+    return
+
+def test_household_varyn(dataset):
+    """
+    This routine performs a series of tests on the Household dataset varying number of samples
+    """
+    Xfull=dataset
+
+    mins=[]
+    maxs=[]
+    for i in range(len(Xfull[0])):
+        mins.append(min(Xfull[:,i]))
+        maxs.append(max(Xfull[:,i]))
+    mins=np.array(mins)
+    maxs=np.array(maxs)
+
+    dimrange=[themax-themin for themax, themin in zip(maxs,mins)]
+    dimrange=np.array(dimrange)
+
+    print(dimrange)
+
+    #minpts = [10, 50, 100]
+    #eps=[500, 1000, 2000]
+    num_samples = [1000, 10000, 100000, 1000000]
+    minpts = 10
+    eps=500
+    grid=(3,3,3,3,3,3,3)
+    timing_actual_results = []
+    timing_theoretical_results = []
+
+    for n in num_samples:
+        # Create smaller dataset
+        X=the_rng.choice(Xfull,size=n,replace=False)
+
+        # Calculate baseline DBSCAN result
+        start_time=time.time()
+        dbscan=DBSCAN(eps=eps,min_samples=minpts).fit(X)
+        end_time=time.time()
+        dbscan_elapsed=end_time-start_time
+        print(f'baseline: {dbscan_elapsed}')
+
+        # Calculate results for GriDBSCAN
+        start_time=time.time()
+        gridbscan=GriDBSCAN(eps=eps,min_samples=minpts,grid=grid).fit(X)
+        end_time=time.time()
+        gridbscan_elapsed=end_time-start_time
+        theoretical_improvement=dbscan_elapsed/gridbscan.dbscan_total_time_
+        actual_improvement=dbscan_elapsed/gridbscan_elapsed
+        print(f'{i:02d}: {gridbscan_elapsed:1.4f} {gridbscan.dbscan_total_time_:1.4f}')
+        print(f'\t\t theoretical improvement: {theoretical_improvement:02.4f}')
+        print(f'\t\t      actual improvement: {actual_improvement:02.4f}')
+        timing_theoretical_results.append(theoretical_improvement)
+        timing_actual_results.append(actual_improvement)
+
+    x_coord=[n for n in num_samples]
+    style=['bo']
+    tmp, = plt.plot(x_coord,timing_theoretical_results, 'bo-')
+    stylelines=[tmp]
+    plt.title('Theoretical Improvement')
+    #plt.legend(stylelines,['Theoretical Improvement'])
+    plt.show()
+
+    x_coord=[n for n in num_samples]
+    tmp, = plt.plot(x_coord,timing_actual_results, 'bo-')
+    stylelines=[tmp]
+    plt.title('Actual Improvement')
+    #plt.legend(stylelines,['Actual Improvement'])
+    plt.show()
+
+    return
+
+def test_household_varyk(dataset):
+    """
+    This routine performs a series of tests on the Household dataset varying min points
+    """
+    #eps=[500, 1000, 2000]
+    num_samples = 100000
+    minpts = [10, 50, 100]
+    eps=500
+    grid=(3,3,3,3,3,3,3)
+
+    timing_actual_results = []
+    timing_theoretical_results = []
+
+    Xfull=dataset
+    # Create smaller dataset
+    X=the_rng.choice(Xfull,size=num_samples,replace=False)
+
+    mins=[]
+    maxs=[]
+    for i in range(len(Xfull[0])):
+        mins.append(min(Xfull[:,i]))
+        maxs.append(max(Xfull[:,i]))
+    mins=np.array(mins)
+    maxs=np.array(maxs)
+
+    dimrange=[themax-themin for themax, themin in zip(maxs,mins)]
+    dimrange=np.array(dimrange)
+
+    print(dimrange)
+
+    for k in minpts:
+        # Calculate baseline DBSCAN result
+        start_time=time.time()
+        dbscan=DBSCAN(eps=eps,min_samples=k).fit(X)
+        end_time=time.time()
+        dbscan_elapsed=end_time-start_time
+        print(f'baseline: {dbscan_elapsed}')
+
+        # Calculate results for GriDBSCAN
+        start_time=time.time()
+        gridbscan=GriDBSCAN(eps=eps,min_samples=k,grid=grid).fit(X)
+        end_time=time.time()
+        gridbscan_elapsed=end_time-start_time
+        theoretical_improvement=dbscan_elapsed/gridbscan.dbscan_total_time_
+        actual_improvement=dbscan_elapsed/gridbscan_elapsed
+        print(f'{i:02d}: {gridbscan_elapsed:1.4f} {gridbscan.dbscan_total_time_:1.4f}')
+        print(f'\t\t theoretical improvement: {theoretical_improvement:02.4f}')
+        print(f'\t\t      actual improvement: {actual_improvement:02.4f}')
+        timing_theoretical_results.append(theoretical_improvement)
+        timing_actual_results.append(actual_improvement)
+
+    x_coord=[k for k in minpts]
+    style=['bo']
+    tmp, = plt.plot(x_coord,timing_theoretical_results, 'bo-')
+    stylelines=[tmp]
+    plt.title('Theoretical Improvement')
+    plt.show()
+
+    x_coord=[k for k in minpts]
+    tmp, = plt.plot(x_coord,timing_actual_results, 'bo-')
+    stylelines=[tmp]
+    plt.title('Actual Improvement')
+    plt.show()
+
+    return
+
+def test_household_varyeps(dataset):
+    """
+    This routine performs a series of tests on the Household dataset varying epsilon
+    """
+    eps=[500, 1000, 2000]
+    num_samples = 100000
+    minpts = 50
+    grid=(3,3,3,3,3,3,3)
+
+    timing_actual_results = []
+    timing_theoretical_results = []
+
+    Xfull=dataset
+    # Create smaller dataset
+    X=the_rng.choice(Xfull,size=num_samples,replace=False)
+
+    mins=[]
+    maxs=[]
+    for i in range(len(Xfull[0])):
+        mins.append(min(Xfull[:,i]))
+        maxs.append(max(Xfull[:,i]))
+    mins=np.array(mins)
+    maxs=np.array(maxs)
+
+    dimrange=[themax-themin for themax, themin in zip(maxs,mins)]
+    dimrange=np.array(dimrange)
+
+    print(dimrange)
+
+    for e in eps:
+        # Calculate baseline DBSCAN result
+        start_time=time.time()
+        dbscan=DBSCAN(eps=e,min_samples=minpts).fit(X)
+        end_time=time.time()
+        dbscan_elapsed=end_time-start_time
+        print(f'baseline: {dbscan_elapsed}')
+
+        # Calculate results for GriDBSCAN
+        start_time=time.time()
+        gridbscan=GriDBSCAN(eps=e,min_samples=minpts,grid=grid).fit(X)
+        end_time=time.time()
+        gridbscan_elapsed=end_time-start_time
+        theoretical_improvement=dbscan_elapsed/gridbscan.dbscan_total_time_
+        actual_improvement=dbscan_elapsed/gridbscan_elapsed
+        print(f'{i:02d}: {gridbscan_elapsed:1.4f} {gridbscan.dbscan_total_time_:1.4f}')
+        print(f'\t\t theoretical improvement: {theoretical_improvement:02.4f}')
+        print(f'\t\t      actual improvement: {actual_improvement:02.4f}')
+        timing_theoretical_results.append(theoretical_improvement)
+        timing_actual_results.append(actual_improvement)
+
+    x_coord=[e for e in eps]
+    style=['bo']
+    tmp, = plt.plot(x_coord,timing_theoretical_results, 'bo-')
+    stylelines=[tmp]
+    plt.title('Theoretical Improvement')
+    plt.show()
+
+    x_coord=[e for e in eps]
+    tmp, = plt.plot(x_coord,timing_actual_results, 'bo-')
+    stylelines=[tmp]
+    plt.title('Actual Improvement')
+    plt.show()
+
     return
 
 if __name__ == '__main__':
@@ -251,7 +651,7 @@ if __name__ == '__main__':
 
     testid=args['test']
 
-    if testid in ['5', 'profile']:
+    if testid in ['5', 'profile','profilepamap2dbscan','profilepamap2gridbscan']:
         # Set MinPts (k) and Epsilon
         k=int(args['kdist'])
         eps=float(args['eps'])
@@ -276,6 +676,22 @@ if __name__ == '__main__':
     elif testid=='profile':
         test_dbscan_profile(X,k,eps)
         test_gridbscan_profile(X,k,eps)
+    elif testid=='profilepamap2dbscan':
+        test_dbscan_profile(X,k,eps,)
+    elif testid=='profilepamap2gridbscan':
+        test_gridbscan_profile(X,k,eps,grid=(4,4,4,4))
+    elif testid=='pamap2varyn':
+        test_pamap2_varyn(X)
+    elif testid=='pamap2varyk':
+        test_pamap2_varyk(X)
+    elif testid=='pamap2varyeps':
+        test_pamap2_varyeps(X)
+    elif testid=='householdvaryn':
+        test_household_varyn(X)
+    elif testid=='householdvaryk':
+        test_household_varyk(X)
+    elif testid=='householdvaryeps':
+        test_household_varyeps(X)
     else:
         raise Exception('Unrecognized test: ' + testid)
 
